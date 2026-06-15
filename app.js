@@ -79,6 +79,7 @@ function initApp() {
   initVoiceInterface();
   initExport();
   startRealtimeSimulation();
+  initWeatherDashboardSearch();
 
   // Initial toast notifications
   setTimeout(() => showToast("⚡ Cybernetic grid connected successfully.", "info"), 1000);
@@ -122,7 +123,7 @@ function initParticles() {
     draw() {
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.fillStyle = state.theme === "dark" ? "rgba(0, 240, 255, 0.4)" : "rgba(0, 143, 168, 0.3)";
+      ctx.fillStyle = state.theme === "dark" ? "rgba(255, 179, 0, 0.45)" : "rgba(166, 124, 0, 0.35)";
       ctx.fill();
     }
   }
@@ -150,8 +151,8 @@ function initParticles() {
           ctx.lineTo(particles[j].x, particles[j].y);
           const alpha = (100 - dist) / 100 * 0.08;
           ctx.strokeStyle = state.theme === "dark" 
-            ? `rgba(0, 240, 255, ${alpha})` 
-            : `rgba(0, 143, 168, ${alpha})`;
+            ? `rgba(255, 179, 0, ${alpha})` 
+            : `rgba(166, 124, 0, ${alpha})`;
           ctx.lineWidth = 0.5;
           ctx.stroke();
         }
@@ -256,10 +257,10 @@ function initNumbersCounter() {
 function getThemeColors() {
   const isDark = state.theme === "dark";
   return {
-    gridColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)",
-    textColor: isDark ? "#8888b5" : "#475569",
-    mainGlow: isDark ? "rgba(0, 240, 255, 0.3)" : "rgba(59, 130, 246, 0.15)",
-    orangeGlow: isDark ? "rgba(255, 106, 0, 0.3)" : "rgba(224, 83, 0, 0.15)"
+    gridColor: isDark ? "rgba(255, 179, 0, 0.04)" : "rgba(100, 80, 0, 0.04)",
+    textColor: isDark ? "#b1a78d" : "#5f5a4a",
+    mainGlow: isDark ? "rgba(255, 179, 0, 0.2)" : "rgba(166, 124, 0, 0.15)",
+    orangeGlow: isDark ? "rgba(255, 85, 0, 0.2)" : "rgba(217, 65, 0, 0.15)"
   };
 }
 
@@ -272,18 +273,18 @@ function initCharts() {
   });
 
   Chart.defaults.color = c.textColor;
-  Chart.defaults.font.family = "'Rajdhani', sans-serif";
+  Chart.defaults.font.family = "'Space Grotesk', sans-serif";
   Chart.defaults.font.size = 11;
 
   // Chart 1: 24h Generation Forecast
   const fcCtx = document.getElementById("forecastChart").getContext("2d");
   const gradientActual = fcCtx.createLinearGradient(0, 0, 0, 300);
-  gradientActual.addColorStop(0, "rgba(255, 106, 0, 0.4)");
-  gradientActual.addColorStop(1, "rgba(255, 106, 0, 0.0)");
+  gradientActual.addColorStop(0, "rgba(255, 85, 0, 0.45)");
+  gradientActual.addColorStop(1, "rgba(255, 85, 0, 0.0)");
 
   const gradientPredicted = fcCtx.createLinearGradient(0, 0, 0, 300);
-  gradientPredicted.addColorStop(0, "rgba(0, 240, 255, 0.3)");
-  gradientPredicted.addColorStop(1, "rgba(0, 240, 255, 0.0)");
+  gradientPredicted.addColorStop(0, "rgba(255, 179, 0, 0.35)");
+  gradientPredicted.addColorStop(1, "rgba(255, 179, 0, 0.0)");
 
   state.charts.forecast = new Chart(fcCtx, {
     type: "line",
@@ -293,22 +294,22 @@ function initCharts() {
         {
           label: "Actual Yield",
           data: [0, 0, 0, 0, 0, 10, 45, 150, 320, 510, 680, 780, 840, 810, 720, 560, 380, 180, 50, 5, 0, 0, 0, 0],
-          borderColor: "#ff6a00",
+          borderColor: "#ff5500",
           backgroundColor: gradientActual,
           fill: true,
           tension: 0.4,
           borderWidth: 2,
-          pointBackgroundColor: "#ffbe00"
+          pointBackgroundColor: "#ffcc00"
         },
         {
           label: "AI Predicted Yield",
           data: [0, 0, 0, 0, 2, 18, 55, 170, 340, 530, 710, 810, 850, 825, 740, 590, 400, 195, 60, 8, 0, 0, 0, 0],
-          borderColor: "#00f0ff",
+          borderColor: "#ffb300",
           backgroundColor: gradientPredicted,
           fill: true,
           tension: 0.4,
           borderWidth: 2,
-          pointBackgroundColor: "#00c9a7",
+          pointBackgroundColor: "#ffcc00",
           borderDash: [5, 5]
         }
       ]
@@ -337,7 +338,7 @@ function initCharts() {
           x: Math.random() * 800 + 300,
           y: Math.random() * 25 + 15
         })),
-        backgroundColor: "#a855f7"
+        backgroundColor: "#ffcc00"
       }]
     },
     options: {
@@ -359,8 +360,8 @@ function initCharts() {
       datasets: [{
         label: "Efficiency Reduction Curve",
         data: [100, 92, 75, 45, 20, 5],
-        borderColor: "#ff2d95",
-        backgroundColor: "rgba(255, 45, 149, 0.1)",
+        borderColor: "#ff5500",
+        backgroundColor: "rgba(255, 85, 0, 0.1)",
         fill: true,
         tension: 0.3,
         borderWidth: 2
@@ -385,8 +386,8 @@ function initCharts() {
       datasets: [{
         label: "Energy generated (MWh)",
         data: [12.4, 14.2, 18.5, 22.4, 26.8, 29.5, 30.1, 28.4, 23.5, 19.1, 14.5, 11.2],
-        backgroundColor: "rgba(0, 240, 255, 0.65)",
-        borderColor: "#00f0ff",
+        backgroundColor: "rgba(255, 179, 0, 0.65)",
+        borderColor: "#ffb300",
         borderWidth: 1
       }]
     },
@@ -410,14 +411,14 @@ function initCharts() {
         {
           label: "Optimal Predicted Curve",
           data: [85, 100, 70, 45],
-          borderColor: "#ffbe00",
-          backgroundColor: "rgba(255, 190, 0, 0.1)"
+          borderColor: "#ffb300",
+          backgroundColor: "rgba(255, 179, 0, 0.06)"
         },
         {
           label: "Current Year Performance",
           data: [88, 97, 68, 48],
-          borderColor: "#00ff88",
-          backgroundColor: "rgba(0, 255, 136, 0.1)"
+          borderColor: "#ffcc00",
+          backgroundColor: "rgba(255, 204, 0, 0.06)"
         }
       ]
     },
@@ -443,9 +444,9 @@ function initCharts() {
       datasets: [{
         data: [65, 25, 10],
         backgroundColor: [
-          "rgba(255, 106, 0, 0.7)",
-          "rgba(168, 85, 247, 0.7)",
-          "rgba(59, 130, 246, 0.7)"
+          "rgba(255, 85, 0, 0.7)",
+          "rgba(255, 179, 0, 0.7)",
+          "rgba(255, 204, 0, 0.7)"
         ]
       }]
     },
@@ -469,8 +470,8 @@ function initCharts() {
       datasets: [{
         label: "Grid Conversion Ratio",
         data: [91.2, 92.5, 93.8, 94.7, 94.2, 93.9, 92.1, 90.5],
-        borderColor: "#00ff88",
-        backgroundColor: "rgba(0, 255, 136, 0.05)",
+        borderColor: "#ffcc00",
+        backgroundColor: "rgba(255, 204, 0, 0.05)",
         tension: 0.3,
         borderWidth: 2,
         fill: true
@@ -495,10 +496,10 @@ function initCharts() {
       datasets: [{
         data: [42, 31, 20, 7],
         backgroundColor: [
-          "#ff6a00",
-          "#00f0ff",
-          "#3b82f6",
-          "#a855f7"
+          "#ff5500",
+          "#ffcc00",
+          "#ffb300",
+          "#c39b54"
         ]
       }]
     },
@@ -520,8 +521,8 @@ function initCharts() {
       datasets: [{
         label: "Solar Capacity (GW)",
         data: [720, 890, 1050, 1185, 1340, 1550],
-        borderColor: "#00f0ff",
-        backgroundColor: "rgba(0, 240, 255, 0.1)",
+        borderColor: "#ffb300",
+        backgroundColor: "rgba(255, 179, 0, 0.1)",
         tension: 0.2,
         borderWidth: 2,
         fill: true
@@ -908,12 +909,25 @@ async function fetchRealTimeWeather(locationName) {
     }
 
     const isHindi = state.voiceLang === "hi-IN";
+    const condition = weatherConditions[code] || "variable atmospheric conditions";
+    const conditionHindi = weatherConditionsHindi[code] || "बदलते मौसम की स्थिति";
+    
+    // Live update the Dashboard widget values
+    const tempEl = document.getElementById("weatherTemp");
+    const descEl = document.getElementById("weatherDesc");
+    const humEl = document.getElementById("wdHumidity");
+    const windEl = document.getElementById("wdWind");
+    const titleEl = document.getElementById("weatherTitle");
+    
+    if (tempEl) tempEl.textContent = Math.round(temp);
+    if (humEl) humEl.textContent = `${humidity}%`;
+    if (windEl) windEl.textContent = `${windSpeed} km/h`;
+    if (descEl) descEl.textContent = isHindi ? conditionHindi : condition;
+    if (titleEl) titleEl.textContent = `🌤️ Weather — ${displayName}`;
     
     if (isHindi) {
-      const conditionHindi = weatherConditionsHindi[code] || "बदलते मौसम की स्थिति";
       return `${displayName} के लिए मौसम की जानकारी: वर्तमान में तापमान ${temp}°C है, हवा में नमी ${humidity}% है, हवा की गति ${windSpeed} किमी प्रति घंटा है, और मौसम: ${conditionHindi} है।`;
     } else {
-      const condition = weatherConditions[code] || "variable atmospheric conditions";
       return `Weather telemetry for ${displayName}: Currently ${temp}°C with ${humidity}% humidity, wind speed at ${windSpeed} km/h, experiencing ${condition}.`;
     }
   } catch (error) {
@@ -1052,6 +1066,13 @@ function initVoiceInterface() {
     langEn.classList.add("active");
     langHi.classList.remove("active");
     voiceStatus.textContent = "Language set to English";
+    
+    const dLangEn = document.getElementById("dashboardLangEn");
+    const dLangHi = document.getElementById("dashboardLangHi");
+    if (dLangEn && dLangHi) {
+      dLangEn.classList.add("active");
+      dLangHi.classList.remove("active");
+    }
   });
 
   langHi.addEventListener("click", () => {
@@ -1059,6 +1080,13 @@ function initVoiceInterface() {
     langHi.classList.add("active");
     langEn.classList.remove("active");
     voiceStatus.textContent = "भाषा हिन्दी चुनी गई";
+    
+    const dLangEn = document.getElementById("dashboardLangEn");
+    const dLangHi = document.getElementById("dashboardLangHi");
+    if (dLangEn && dLangHi) {
+      dLangHi.classList.add("active");
+      dLangEn.classList.remove("active");
+    }
   });
 
   voiceBtn.addEventListener("click", () => {
@@ -1242,5 +1270,67 @@ function playBeepSound(duration) {
     }, duration);
   } catch (e) {
     // Audio Context blocked by browser policy until interaction
+  }
+}
+
+// ==========================================
+// 12. INTERACTIVE WEATHER DASHBOARD SEARCH
+// ==========================================
+function initWeatherDashboardSearch() {
+  const searchInput = document.getElementById("weatherSearchInput");
+  const searchBtn = document.getElementById("weatherSearchBtn");
+  const responseDiv = document.getElementById("weatherSearchResponse");
+  
+  const dLangEn = document.getElementById("dashboardLangEn");
+  const dLangHi = document.getElementById("dashboardLangHi");
+  
+  if (dLangEn && dLangHi) {
+    dLangEn.addEventListener("click", () => {
+      state.voiceLang = "en-US";
+      dLangEn.classList.add("active");
+      dLangHi.classList.remove("active");
+      
+      const langEn = document.getElementById("langEn");
+      const langHi = document.getElementById("langHi");
+      if (langEn && langHi) {
+        langEn.classList.add("active");
+        langHi.classList.remove("active");
+      }
+    });
+    
+    dLangHi.addEventListener("click", () => {
+      state.voiceLang = "hi-IN";
+      dLangHi.classList.add("active");
+      dLangEn.classList.remove("active");
+      
+      const langEn = document.getElementById("langEn");
+      const langHi = document.getElementById("langHi");
+      if (langEn && langHi) {
+        langHi.classList.add("active");
+        langEn.classList.remove("active");
+      }
+    });
+  }
+  
+  async function triggerSearch() {
+    const query = searchInput.value.trim();
+    if (!query) return;
+    
+    responseDiv.textContent = state.voiceLang === "hi-IN" ? "मौसम डेटा लोड हो रहा है..." : "Fetching telemetry state weather...";
+    
+    try {
+      const response = await fetchRealTimeWeather(query);
+      responseDiv.textContent = response;
+      showToast("🛰️ Grid telemetry synchronized.", "info");
+    } catch (err) {
+      responseDiv.textContent = "Error loading weather telemetry.";
+    }
+  }
+  
+  if (searchBtn && searchInput) {
+    searchBtn.addEventListener("click", triggerSearch);
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") triggerSearch();
+    });
   }
 }

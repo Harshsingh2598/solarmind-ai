@@ -745,17 +745,29 @@ function initAISentinel() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
-  function handleSend() {
+  async function handleSend() {
     const text = chatInput.value.trim();
     if (!text) return;
     appendMessage(text, "user");
     chatInput.value = "";
 
-    // Simulating typing delay
-    setTimeout(() => {
-      const response = generateAIResponse(text);
+    // Show a typing indicator message
+    const tempId = "typing-" + Date.now();
+    const typingDiv = document.createElement("div");
+    typingDiv.className = "chat-msg bot";
+    typingDiv.id = tempId;
+    typingDiv.innerHTML = `<div class="msg-bubble" style="opacity: 0.6;">Searching telemetry satellite grid...</div>`;
+    chatMessages.appendChild(typingDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    try {
+      const response = await generateAIResponse(text);
+      document.getElementById(tempId).remove();
       appendMessage(response, "bot");
-    }, 800);
+    } catch (err) {
+      document.getElementById(tempId).remove();
+      appendMessage("Unable to complete weather query.", "bot");
+    }
   }
 
   chatSend.addEventListener("click", handleSend);
@@ -764,18 +776,93 @@ function initAISentinel() {
   });
 }
 
-function generateAIResponse(q) {
-  q = q.toLowerCase();
-  if (q.includes("forecast") || q.includes("generation")) {
+async function fetchRealTimeWeather(locationName) {
+  try {
+    // 1. Fetch Geocoding coordinates from Open-Meteo
+    const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=en&format=json`;
+    const geoResponse = await fetch(geocodeUrl);
+    const geoData = await geoResponse.json();
+    
+    if (!geoData.results || geoData.results.length === 0) {
+      return `I could not locate "${locationName}" on the weather grid. Please verify the state or country spelling.`;
+    }
+    
+    const location = geoData.results[0];
+    const { latitude, longitude, name, country, admin1 } = location;
+    const locationFullName = admin1 ? `${name}, ${admin1}, ${country}` : `${name}, ${country}`;
+    
+    // 2. Fetch current weather from coordinates
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`;
+    const weatherResponse = await fetch(weatherUrl);
+    const weatherData = await weatherResponse.json();
+    
+    if (!weatherData.current) {
+      return `Telemetry retrieval failed for ${locationFullName}.`;
+    }
+    
+    const temp = weatherData.current.temperature_2m;
+    const humidity = weatherData.current.relative_humidity_2m;
+    const windSpeed = weatherData.current.wind_speed_10m;
+    const code = weatherData.current.weather_code;
+    
+    // Simple code to text mapping
+    const weatherConditions = {
+      0: "Clear sky",
+      1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+      45: "Foggy", 48: "Depositing rime fog",
+      51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle",
+      61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
+      71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow",
+      77: "Snow grains",
+      80: "Slight rain showers", 81: "Moderate rain showers", 82: "Violent rain showers",
+      85: "Slight snow showers", 86: "Heavy snow showers",
+      95: "Thunderstorm", 96: "Thunderstorm with slight hail", 99: "Thunderstorm with heavy hail"
+    };
+    
+    const condition = weatherConditions[code] || "variable atmospheric conditions";
+    
+    return `Weather telemetry for ${locationFullName}: Currently ${temp}°C with ${humidity}% humidity, wind speed at ${windSpeed} km/h, experiencing ${condition}.`;
+  } catch (error) {
+    console.error(error);
+    return `Satellite grid connectivity error. Unable to get real-time parameters for ${locationName}.`;
+  }
+}
+
+async function generateAIResponse(q) {
+  const lowercaseQ = q.toLowerCase();
+  
+  // Check if query is looking for real-time weather details
+  if (lowercaseQ.includes("weather") || lowercaseQ.includes("temp") || lowercaseQ.includes("temperature")) {
+    let locationInput = "";
+    
+    // Check pattern: "weather in/of/for [place]"
+    let match = q.match(/(?:weather|temperature|temp)(?:\s+(?:in|of|for|at))?\s+([a-zA-Z\s,]{2,})/i);
+    if (match && match[1]) {
+      locationInput = match[1].trim();
+    } else {
+      // Check pattern: "[place] weather/temperature/temp"
+      match = q.match(/([a-zA-Z\s,]{2,})\s+(?:weather|temperature|temp)/i);
+      if (match && match[1]) {
+        locationInput = match[1].trim();
+      }
+    }
+    
+    const stopWords = ["today", "tomorrow", "forecast", "now", "here", "the", "a", "an", "is", "what", "how", "give", "me", "show", "tell", "current"];
+    const words = locationInput.split(/\s+/).filter(w => !stopWords.includes(w.toLowerCase()));
+    
+    if (words.length > 0) {
+      const refinedLocation = words.join(" ");
+      return await fetchRealTimeWeather(refinedLocation);
+    }
+  }
+  
+  if (lowercaseQ.includes("forecast") || lowercaseQ.includes("generation")) {
     return "Our neural forecasting predicts a peak yield of around 850 kW today at 13:00 under the current atmospheric settings. Clear weather yields are fully nominal.";
   }
-  if (q.includes("panel") || q.includes("efficiency")) {
+  if (lowercaseQ.includes("panel") || lowercaseQ.includes("efficiency")) {
     return "The system consists of 12 sub-arrays. Sub-array PV-007 is experiencing a thermal warning of 38.2°C, causing a local efficiency dip to 68%. Standard grid cleaning is advised.";
   }
-  if (q.includes("weather") || q.includes("clouds")) {
-    return "Currently 34°C with 42% humidity. Irradiance index stands high. Advancing cloud layers may reduce total day yield by ~12.4%.";
-  }
-  if (q.includes("saving") || q.includes("revenue") || q.includes("co2")) {
+  if (lowercaseQ.includes("saving") || lowercaseQ.includes("revenue") || lowercaseQ.includes("co2")) {
     return "You have saved 2.34 tons of carbon dioxide today. This translates to roughly $1,892 in net revenue generated through smart grid returns.";
   }
   return "Query processed. Grid metrics are nominal. Let me know if you need to run specific predictions or troubleshoot panel health.";
@@ -837,17 +924,19 @@ function initVoiceInterface() {
     }
   });
 
-  recognition.onresult = (event) => {
+  recognition.onresult = async (event) => {
     const text = event.results[0][0].transcript;
     voiceTranscript.textContent = `"${text}"`;
+    voiceResponse.textContent = "Processing voice telemetry...";
     
     // Process response
-    const botResponse = generateAIResponse(text);
-    setTimeout(() => {
+    try {
+      const botResponse = await generateAIResponse(text);
       voiceResponse.textContent = botResponse;
-      // Speech synthesis
       speak(botResponse);
-    }, 500);
+    } catch (err) {
+      voiceResponse.textContent = "Could not parse voice payload.";
+    }
 
     stopListening();
   };

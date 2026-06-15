@@ -1,0 +1,965 @@
+/* ==========================================================
+   SOLARMIND AI — Application Engine (v2.0)
+   ========================================================== */
+
+document.addEventListener("DOMContentLoaded", () => {
+  initLoadingScreen();
+});
+
+// App State
+const state = {
+  theme: "dark",
+  prediction: {
+    irradiance: 750,
+    temperature: 28,
+    cloud: 15,
+    humidity: 45,
+    wind: 12
+  },
+  charts: {},
+  realtimeTimer: null
+};
+
+// ==========================================
+// 1. LOADING SCREEN & ROUTING
+// ==========================================
+function initLoadingScreen() {
+  const loadingScreen = document.getElementById("loadingScreen");
+  const loadingStatus = document.getElementById("loadingStatus");
+  const loadingBar = document.getElementById("loadingBar");
+  const loadingPercent = document.getElementById("loadingPercent");
+  const app = document.getElementById("app");
+
+  const steps = [
+    { percent: 15, status: "Establishing link to Solar Grid..." },
+    { percent: 35, status: "Retrieving historical weather data..." },
+    { percent: 55, status: "Bootstrapping Random Forest trees..." },
+    { percent: 75, status: "Syncing photovoltaic panel telemetry..." },
+    { percent: 90, status: "Calibrating Neural Net forecasting models..." },
+    { percent: 100, status: "System Ready. Initializing Dashboard." }
+  ];
+
+  let currentStep = 0;
+  let currentPercent = 0;
+
+  const interval = setInterval(() => {
+    if (currentStep < steps.length) {
+      const target = steps[currentStep].percent;
+      loadingStatus.textContent = steps[currentStep].status;
+
+      if (currentPercent < target) {
+        currentPercent += Math.floor(Math.random() * 3) + 1;
+        if (currentPercent > target) currentPercent = target;
+        loadingBar.style.width = `${currentPercent}%`;
+        loadingPercent.textContent = `${currentPercent}%`;
+      } else {
+        currentStep++;
+      }
+    } else {
+      clearInterval(interval);
+      setTimeout(() => {
+        loadingScreen.classList.add("hidden");
+        app.classList.remove("hidden");
+        // Trigger initialization of the application
+        initApp();
+      }, 500);
+    }
+  }, 35);
+}
+
+function initApp() {
+  initParticles();
+  initTheme();
+  initNavigation();
+  initNumbersCounter();
+  initCharts();
+  initPredictionEngine();
+  initPanelsMonitor();
+  initAISentinel();
+  initVoiceInterface();
+  initExport();
+  startRealtimeSimulation();
+
+  // Initial toast notifications
+  setTimeout(() => showToast("⚡ Cybernetic grid connected successfully.", "info"), 1000);
+  setTimeout(() => showToast("🌦️ Cloud cover forecast revised: -5% expected.", "info"), 4000);
+  setTimeout(() => showToast("⚠️ Panel 07 efficiency dropped below threshold.", "warning"), 8000);
+}
+
+// ==========================================
+// 2. PARTICLE NETWORK CANVAS
+// ==========================================
+function initParticles() {
+  const canvas = document.getElementById("particleCanvas");
+  const ctx = canvas.getContext("2d");
+  let particles = [];
+  const maxParticles = 60;
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+
+  class Particle {
+    constructor() {
+      this.x = Math.random() * canvas.width;
+      this.y = Math.random() * canvas.height;
+      this.vx = (Math.random() - 0.5) * 0.4;
+      this.vy = (Math.random() - 0.5) * 0.4;
+      this.radius = Math.random() * 1.5 + 0.5;
+    }
+
+    update() {
+      this.x += this.vx;
+      this.y += this.vy;
+
+      if (this.x < 0 || this.x > canvas.width) this.vx = -this.vx;
+      if (this.y < 0 || this.y > canvas.height) this.vy = -this.vy;
+    }
+
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctx.fillStyle = state.theme === "dark" ? "rgba(0, 240, 255, 0.4)" : "rgba(0, 143, 168, 0.3)";
+      ctx.fill();
+    }
+  }
+
+  for (let i = 0; i < maxParticles; i++) {
+    particles.push(new Particle());
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw connections
+    for (let i = 0; i < particles.length; i++) {
+      particles[i].update();
+      particles[i].draw();
+
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < 100) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          const alpha = (100 - dist) / 100 * 0.08;
+          ctx.strokeStyle = state.theme === "dark" 
+            ? `rgba(0, 240, 255, ${alpha})` 
+            : `rgba(0, 143, 168, ${alpha})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+// ==========================================
+// 3. NAVIGATION & THEME SYSTEM
+// ==========================================
+function initTheme() {
+  const themeToggle = document.getElementById("themeToggle");
+  
+  // Set default theme from DOM state
+  state.theme = document.documentElement.getAttribute("data-theme") || "dark";
+
+  themeToggle.addEventListener("click", () => {
+    state.theme = state.theme === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", state.theme);
+    
+    // Re-initialize charts with matching styles
+    initCharts();
+    initPanelsMonitor();
+    
+    // Update theme toggle icon
+    themeToggle.innerHTML = state.theme === "dark" 
+      ? `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`
+      : `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`;
+
+    showToast(`🎨 Theme switched to ${state.theme.toUpperCase()} mode.`, "info");
+  });
+}
+
+function initNavigation() {
+  const links = document.querySelectorAll(".nav-link");
+  links.forEach(link => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      links.forEach(l => l.classList.remove("active"));
+      link.classList.add("active");
+      
+      const targetId = link.getAttribute("data-section");
+      const targetSection = document.getElementById(targetId);
+      if (targetSection) {
+        targetSection.scrollIntoView({ behavior: "smooth" });
+      }
+    });
+  });
+
+  // Track active section on scroll
+  window.addEventListener("scroll", () => {
+    let scrollPos = window.scrollY + 120;
+    const sections = document.querySelectorAll("section[id]");
+    
+    sections.forEach(sec => {
+      if (scrollPos >= sec.offsetTop && scrollPos < (sec.offsetTop + sec.offsetHeight)) {
+        const id = sec.getAttribute("id");
+        links.forEach(l => {
+          l.classList.remove("active");
+          if (l.getAttribute("data-section") === id) {
+            l.classList.add("active");
+          }
+        });
+      }
+    });
+  });
+}
+
+// Stats counter roll animation
+function initNumbersCounter() {
+  const elements = document.querySelectorAll(".stat-value, .gs-number");
+  
+  elements.forEach(el => {
+    const target = parseFloat(el.getAttribute("data-target"));
+    const prefix = el.getAttribute("data-prefix") || "";
+    const suffix = el.getAttribute("data-suffix") || "";
+    let current = 0;
+    const step = target / 30; // 30 steps animation
+    
+    const countInterval = setInterval(() => {
+      current += step;
+      if (current >= target) {
+        current = target;
+        clearInterval(countInterval);
+      }
+      
+      if (Number.isInteger(target)) {
+        el.textContent = `${prefix}${Math.round(current).toLocaleString()}${suffix}`;
+      } else {
+        el.textContent = `${prefix}${current.toFixed(1)}${suffix}`;
+      }
+    }, 25);
+  });
+}
+
+// ==========================================
+// 4. CHART GENERATION (CHART.JS)
+// ==========================================
+function getThemeColors() {
+  const isDark = state.theme === "dark";
+  return {
+    gridColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)",
+    textColor: isDark ? "#8888b5" : "#475569",
+    mainGlow: isDark ? "rgba(0, 240, 255, 0.3)" : "rgba(59, 130, 246, 0.15)",
+    orangeGlow: isDark ? "rgba(255, 106, 0, 0.3)" : "rgba(224, 83, 0, 0.15)"
+  };
+}
+
+function initCharts() {
+  const c = getThemeColors();
+  
+  // Destroy existing charts to reload them cleanly
+  Object.keys(state.charts).forEach(key => {
+    if (state.charts[key]) state.charts[key].destroy();
+  });
+
+  Chart.defaults.color = c.textColor;
+  Chart.defaults.font.family = "'Rajdhani', sans-serif";
+  Chart.defaults.font.size = 11;
+
+  // Chart 1: 24h Generation Forecast
+  const fcCtx = document.getElementById("forecastChart").getContext("2d");
+  const gradientActual = fcCtx.createLinearGradient(0, 0, 0, 300);
+  gradientActual.addColorStop(0, "rgba(255, 106, 0, 0.4)");
+  gradientActual.addColorStop(1, "rgba(255, 106, 0, 0.0)");
+
+  const gradientPredicted = fcCtx.createLinearGradient(0, 0, 0, 300);
+  gradientPredicted.addColorStop(0, "rgba(0, 240, 255, 0.3)");
+  gradientPredicted.addColorStop(1, "rgba(0, 240, 255, 0.0)");
+
+  state.charts.forecast = new Chart(fcCtx, {
+    type: "line",
+    data: {
+      labels: Array.from({length: 24}, (_, i) => `${String(i).padStart(2, '0')}:00`),
+      datasets: [
+        {
+          label: "Actual Yield",
+          data: [0, 0, 0, 0, 0, 10, 45, 150, 320, 510, 680, 780, 840, 810, 720, 560, 380, 180, 50, 5, 0, 0, 0, 0],
+          borderColor: "#ff6a00",
+          backgroundColor: gradientActual,
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2,
+          pointBackgroundColor: "#ffbe00"
+        },
+        {
+          label: "AI Predicted Yield",
+          data: [0, 0, 0, 0, 2, 18, 55, 170, 340, 530, 710, 810, 850, 825, 740, 590, 400, 195, 60, 8, 0, 0, 0, 0],
+          borderColor: "#00f0ff",
+          backgroundColor: gradientPredicted,
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2,
+          pointBackgroundColor: "#00c9a7",
+          borderDash: [5, 5]
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "top" }
+      },
+      scales: {
+        x: { grid: { color: c.gridColor } },
+        y: { grid: { color: c.gridColor }, ticks: { callback: value => `${value} kW` } }
+      }
+    }
+  });
+
+  // Chart 2: Temp-Irradiance Correlation Scatter
+  const tiCtx = document.getElementById("tempIrradChart").getContext("2d");
+  state.charts.tempIrrad = new Chart(tiCtx, {
+    type: "scatter",
+    data: {
+      datasets: [{
+        label: "Operational Panels",
+        data: Array.from({length: 40}, () => ({
+          x: Math.random() * 800 + 300,
+          y: Math.random() * 25 + 15
+        })),
+        backgroundColor: "#a855f7"
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { title: { display: true, text: "Irradiance (W/m²)" }, grid: { color: c.gridColor } },
+        y: { title: { display: true, text: "Temperature (°C)" }, grid: { color: c.gridColor } }
+      }
+    }
+  });
+
+  // Chart 3: Cloud Impact
+  const ciCtx = document.getElementById("cloudImpactChart").getContext("2d");
+  state.charts.cloudImpact = new Chart(ciCtx, {
+    type: "line",
+    data: {
+      labels: ["0%", "20%", "40%", "60%", "80%", "100%"],
+      datasets: [{
+        label: "Efficiency Reduction Curve",
+        data: [100, 92, 75, 45, 20, 5],
+        borderColor: "#ff2d95",
+        backgroundColor: "rgba(255, 45, 149, 0.1)",
+        fill: true,
+        tension: 0.3,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: c.gridColor } },
+        y: { grid: { color: c.gridColor }, ticks: { callback: v => `${v}%` } }
+      }
+    }
+  });
+
+  // Chart 4: Monthly Generation
+  const monCtx = document.getElementById("monthlyChart").getContext("2d");
+  state.charts.monthly = new Chart(monCtx, {
+    type: "bar",
+    data: {
+      labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+      datasets: [{
+        label: "Energy generated (MWh)",
+        data: [12.4, 14.2, 18.5, 22.4, 26.8, 29.5, 30.1, 28.4, 23.5, 19.1, 14.5, 11.2],
+        backgroundColor: "rgba(0, 240, 255, 0.65)",
+        borderColor: "#00f0ff",
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: c.gridColor } },
+        y: { grid: { color: c.gridColor } }
+      }
+    }
+  });
+
+  // Chart 5: Seasonal Pattern Radar
+  const seaCtx = document.getElementById("seasonalChart").getContext("2d");
+  state.charts.seasonal = new Chart(seaCtx, {
+    type: "radar",
+    data: {
+      labels: ["Spring", "Summer", "Autumn", "Winter"],
+      datasets: [
+        {
+          label: "Optimal Predicted Curve",
+          data: [85, 100, 70, 45],
+          borderColor: "#ffbe00",
+          backgroundColor: "rgba(255, 190, 0, 0.1)"
+        },
+        {
+          label: "Current Year Performance",
+          data: [88, 97, 68, 48],
+          borderColor: "#00ff88",
+          backgroundColor: "rgba(0, 255, 136, 0.1)"
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          grid: { color: c.gridColor },
+          angleLines: { color: c.gridColor },
+          pointLabels: { color: c.textColor }
+        }
+      }
+    }
+  });
+
+  // Chart 6: Peak vs Off-Peak Polar
+  const peakCtx = document.getElementById("peakChart").getContext("2d");
+  state.charts.peak = new Chart(peakCtx, {
+    type: "polarArea",
+    data: {
+      labels: ["Peak (10:00-15:00)", "Mid-Peak", "Off-Peak"],
+      datasets: [{
+        data: [65, 25, 10],
+        backgroundColor: [
+          "rgba(255, 106, 0, 0.7)",
+          "rgba(168, 85, 247, 0.7)",
+          "rgba(59, 130, 246, 0.7)"
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          grid: { color: c.gridColor }
+        }
+      }
+    }
+  });
+
+  // Chart 7: Array Efficiency Over Time
+  const effCtx = document.getElementById("efficiencyChart").getContext("2d");
+  state.charts.efficiency = new Chart(effCtx, {
+    type: "line",
+    data: {
+      labels: ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"],
+      datasets: [{
+        label: "Grid Conversion Ratio",
+        data: [91.2, 92.5, 93.8, 94.7, 94.2, 93.9, 92.1, 90.5],
+        borderColor: "#00ff88",
+        backgroundColor: "rgba(0, 255, 136, 0.05)",
+        tension: 0.3,
+        borderWidth: 2,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: c.gridColor } },
+        y: { min: 80, max: 100, grid: { color: c.gridColor }, ticks: { callback: v => `${v}%` } }
+      }
+    }
+  });
+
+  // Chart 8: Renewable Energy Mix Doughnut
+  const mixCtx = document.getElementById("renewableMixChart").getContext("2d");
+  state.charts.renewableMix = new Chart(mixCtx, {
+    type: "doughnut",
+    data: {
+      labels: ["Solar PV", "Wind Turbine", "Hydroelectric", "Bio-Energy"],
+      datasets: [{
+        data: [42, 31, 20, 7],
+        backgroundColor: [
+          "#ff6a00",
+          "#00f0ff",
+          "#3b82f6",
+          "#a855f7"
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "right" }
+      }
+    }
+  });
+
+  // Chart 9: Capacity Growth line
+  const growthCtx = document.getElementById("growthChart").getContext("2d");
+  state.charts.growth = new Chart(growthCtx, {
+    type: "line",
+    data: {
+      labels: ["2021", "2022", "2023", "2024", "2025", "2026 (Est)"],
+      datasets: [{
+        label: "Solar Capacity (GW)",
+        data: [720, 890, 1050, 1185, 1340, 1550],
+        borderColor: "#00f0ff",
+        backgroundColor: "rgba(0, 240, 255, 0.1)",
+        tension: 0.2,
+        borderWidth: 2,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: c.gridColor } },
+        y: { grid: { color: c.gridColor } }
+      }
+    }
+  });
+
+  // Initialize gauge circle layouts
+  const gauges = document.querySelectorAll(".gauge-fill");
+  gauges.forEach(gauge => {
+    const pct = parseInt(gauge.getAttribute("data-percent"));
+    // 339.29 is full ring. Subtract relative portion.
+    const offset = 339.29 - (339.29 * pct / 100);
+    gauge.style.strokeDashoffset = offset;
+  });
+}
+
+// ==========================================
+// 5. FORECAST / PREDICTION ENGINE
+// ==========================================
+function initPredictionEngine() {
+  const sliders = ["irradiance", "temperature", "cloud", "humidity", "wind"];
+  
+  sliders.forEach(id => {
+    const slider = document.getElementById(id);
+    const valDisplay = document.getElementById(`${id}Val`);
+    
+    slider.addEventListener("input", () => {
+      let suffix = "";
+      if (id === "irradiance") suffix = " W/m²";
+      else if (id === "temperature") suffix = "°C";
+      else if (id === "cloud" || id === "humidity") suffix = "%";
+      else if (id === "wind") suffix = " km/h";
+      
+      valDisplay.textContent = `${slider.value}${suffix}`;
+      state.prediction[id] = parseInt(slider.value);
+    });
+  });
+
+  const predictBtn = document.getElementById("predictBtn");
+  predictBtn.addEventListener("click", () => {
+    runModelPrediction();
+    showToast("🧠 AI Neural model executed forecast computation.", "info");
+  });
+
+  // Run initial prediction
+  runModelPrediction();
+}
+
+function runModelPrediction() {
+  const p = state.prediction;
+  
+  // Custom formula simulated model representing solar forecasting
+  // High irradiance = high output, high temperature = slight efficiency penalty
+  // High cloud cover = severe output reduction
+  const baseEfficiency = 0.22; // 22% panel efficiency
+  const panelArea = 4000; // 4000 square meters of arrays
+  
+  // Temp coefficient: -0.4% efficiency per degree above 25°C
+  const tempCorrection = p.temperature > 25 ? (1 - (p.temperature - 25) * 0.004) : 1;
+  const cloudLoss = 1 - (p.cloud * 0.0085);
+  const humidityLoss = 1 - (p.humidity * 0.001);
+  
+  let predictedkW = (p.irradiance * panelArea * baseEfficiency * tempCorrection * cloudLoss * humidityLoss) / 1000;
+  predictedkW = Math.max(0, predictedkW);
+  
+  // Update prediction output circles/metrics
+  const valueDisplay = document.getElementById("predictionValue");
+  const ring = document.getElementById("predictionRing");
+  
+  // Smooth slide count animation
+  animateValue(valueDisplay, Math.round(predictedkW));
+  
+  // Maximum theoretical output is around 1000 kW
+  const percent = Math.min(100, (predictedkW / 1000) * 100);
+  const offset = 339.29 - (339.29 * percent / 100);
+  ring.style.strokeDashoffset = offset;
+
+  // Confidence calculations
+  const confidence = Math.max(70, 98 - (p.cloud * 0.15) - (Math.abs(25 - p.temperature) * 0.2)).toFixed(1);
+  const mse = (0.015 + (p.cloud * 0.0004)).toFixed(3);
+  const r2 = (0.98 - (p.humidity * 0.0002)).toFixed(3);
+  
+  document.getElementById("predConfidence").textContent = `${confidence}%`;
+  document.getElementById("predMSE").textContent = mse;
+  document.getElementById("predR2").textContent = r2;
+  
+  const genKWh = Math.round(predictedkW * 7.5).toLocaleString();
+  document.getElementById("predYield").textContent = `${genKWh} kWh`;
+}
+
+function animateValue(obj, end, duration = 800) {
+  let start = parseInt(obj.textContent) || 0;
+  let startTimestamp = null;
+  const step = (timestamp) => {
+    if (!startTimestamp) startTimestamp = timestamp;
+    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+    obj.textContent = Math.floor(progress * (end - start) + start);
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    }
+  };
+  window.requestAnimationFrame(step);
+}
+
+// ==========================================
+// 6. PHOTOVOLTAIC PANEL GRID MONITOR
+// ==========================================
+function initPanelsMonitor() {
+  const panelGrid = document.getElementById("panelGrid");
+  panelGrid.innerHTML = ""; // Clear existing
+
+  for (let i = 1; i <= 12; i++) {
+    const id = `PV-${String(i).padStart(3, '0')}`;
+    const health = i === 7 ? 68 : Math.floor(Math.random() * 8) + 92;
+    const output = i === 7 ? 35 : Math.floor(Math.random() * 25) + 65;
+    let statusClass = "active";
+    if (health < 80) statusClass = "fault";
+    else if (health < 95) statusClass = "warning";
+
+    const pCard = document.createElement("div");
+    pCard.className = "panel-card";
+    pCard.innerHTML = `
+      <span class="panel-id">${id}</span>
+      <span class="panel-status-dot ${statusClass}"></span>
+      <div class="panel-icon-wrap">
+        <svg viewBox="0 0 24 24" class="panel-svg" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <line x1="3" y1="9" x2="21" y2="9"/>
+          <line x1="3" y1="15" x2="21" y2="15"/>
+          <line x1="9" y1="3" x2="9" y2="21"/>
+          <line x1="15" y1="3" x2="15" y2="21"/>
+        </svg>
+      </div>
+      <div class="panel-metrics">
+        <span class="panel-output">${output} kW</span>
+        <span class="panel-health">${health}% H</span>
+      </div>
+      <div class="panel-grid-footer">
+        <span>Temp: ${(26 + Math.random() * 6).toFixed(1)}°</span>
+        <span>A: ${((output * 1000) / 400).toFixed(0)}A</span>
+      </div>
+    `;
+    panelGrid.appendChild(pCard);
+  }
+}
+
+// ==========================================
+// 7. REAL-TIME DATA SIMULATION ENGINE
+// ==========================================
+function startRealtimeSimulation() {
+  if (state.realtimeTimer) clearInterval(state.realtimeTimer);
+  
+  state.realtimeTimer = setInterval(() => {
+    // 1. Update live metrics slightly
+    const kwElement = document.querySelector("#statPower .stat-value");
+    const effElement = document.querySelector("#statEfficiency .stat-value");
+    const tempElement = document.querySelector("#statTemp .stat-value");
+    
+    let baseKW = 840 + (Math.random() * 20 - 10);
+    let baseEff = 94 + (Math.random() * 2 - 1);
+    let baseTemp = 32 + (Math.random() * 2 - 1);
+    
+    kwElement.textContent = `${baseKW.toFixed(1)} kW`;
+    effElement.textContent = `${baseEff.toFixed(1)}%`;
+    tempElement.textContent = `${baseTemp.toFixed(1)}°C`;
+
+    // 2. Randomly jitter the chart forecast slightly to make it alive
+    if (state.charts.forecast) {
+      const actualDataset = state.charts.forecast.data.datasets[0].data;
+      const hours = new Date().getHours();
+      // Jitter the actual yield around current hour index
+      if (actualDataset[hours] !== undefined && actualDataset[hours] > 0) {
+        actualDataset[hours] += (Math.random() * 10 - 5);
+        state.charts.forecast.update("none"); // Update silently without animation refresh
+      }
+    }
+
+    // 3. Occasionally trigger random toast alerts
+    if (Math.random() > 0.85) {
+      const weatherEvents = [
+        "🌦️ Weather telemetry updated: humidity rising.",
+        "⚡ Power surge handled by inverter network.",
+        "🤖 SolarMind AI optimized battery load profile.",
+        "🌍 Carbon offset checkpoint completed."
+      ];
+      const randomEvent = weatherEvents[Math.floor(Math.random() * weatherEvents.length)];
+      showToast(randomEvent, "info");
+    }
+
+  }, 3500);
+}
+
+// ==========================================
+// 8. AI SENTINEL CHAT DRAWED LOGIC
+// ==========================================
+function initAISentinel() {
+  const chatToggle = document.getElementById("chatToggle");
+  const chatClose = document.getElementById("chatClose");
+  const chatPanel = document.getElementById("chatPanel");
+  const chatInput = document.getElementById("chatInput");
+  const chatSend = document.getElementById("chatSend");
+  const chatMessages = document.getElementById("chatMessages");
+
+  chatToggle.addEventListener("click", () => chatPanel.classList.toggle("open"));
+  chatClose.addEventListener("click", () => chatPanel.classList.remove("open"));
+
+  function appendMessage(text, sender) {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = `chat-msg ${sender}`;
+    msgDiv.innerHTML = `<div class="msg-bubble">${text}</div>`;
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function handleSend() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    appendMessage(text, "user");
+    chatInput.value = "";
+
+    // Simulating typing delay
+    setTimeout(() => {
+      const response = generateAIResponse(text);
+      appendMessage(response, "bot");
+    }, 800);
+  }
+
+  chatSend.addEventListener("click", handleSend);
+  chatInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleSend();
+  });
+}
+
+function generateAIResponse(q) {
+  q = q.toLowerCase();
+  if (q.includes("forecast") || q.includes("generation")) {
+    return "Our neural forecasting predicts a peak yield of around 850 kW today at 13:00 under the current atmospheric settings. Clear weather yields are fully nominal.";
+  }
+  if (q.includes("panel") || q.includes("efficiency")) {
+    return "The system consists of 12 sub-arrays. Sub-array PV-007 is experiencing a thermal warning of 38.2°C, causing a local efficiency dip to 68%. Standard grid cleaning is advised.";
+  }
+  if (q.includes("weather") || q.includes("clouds")) {
+    return "Currently 34°C with 42% humidity. Irradiance index stands high. Advancing cloud layers may reduce total day yield by ~12.4%.";
+  }
+  if (q.includes("saving") || q.includes("revenue") || q.includes("co2")) {
+    return "You have saved 2.34 tons of carbon dioxide today. This translates to roughly $1,892 in net revenue generated through smart grid returns.";
+  }
+  return "Query processed. Grid metrics are nominal. Let me know if you need to run specific predictions or troubleshoot panel health.";
+}
+
+// ==========================================
+// 9. WEB SPEECH VOICE INTERFACE
+// ==========================================
+function initVoiceInterface() {
+  const voiceBtn = document.getElementById("voiceBtn");
+  const voiceModal = document.getElementById("voiceModal");
+  const voiceClose = document.getElementById("voiceClose");
+  const voiceMicBtn = document.getElementById("voiceMicBtn");
+  const voiceStatus = document.getElementById("voiceStatus");
+  const voiceTranscript = document.getElementById("voiceTranscript");
+  const voiceResponse = document.getElementById("voiceResponse");
+
+  voiceBtn.addEventListener("click", () => {
+    voiceModal.classList.add("open");
+  });
+
+  voiceClose.addEventListener("click", () => {
+    voiceModal.classList.remove("open");
+    stopListening();
+  });
+
+  // Web Speech API check
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    voiceStatus.textContent = "Voice speech not supported by your browser.";
+    voiceMicBtn.disabled = true;
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+
+  let listening = false;
+
+  function stopListening() {
+    recognition.stop();
+    voiceModal.classList.remove("listening");
+    listening = false;
+    voiceStatus.textContent = "Tap to speak";
+  }
+
+  voiceMicBtn.addEventListener("click", () => {
+    if (listening) {
+      stopListening();
+    } else {
+      voiceTranscript.textContent = "";
+      voiceResponse.textContent = "";
+      voiceModal.classList.add("listening");
+      voiceStatus.textContent = "Listening...";
+      recognition.start();
+      listening = true;
+    }
+  });
+
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    voiceTranscript.textContent = `"${text}"`;
+    
+    // Process response
+    const botResponse = generateAIResponse(text);
+    setTimeout(() => {
+      voiceResponse.textContent = botResponse;
+      // Speech synthesis
+      speak(botResponse);
+    }, 500);
+
+    stopListening();
+  };
+
+  recognition.onerror = () => {
+    stopListening();
+    voiceStatus.textContent = "Error occurred. Try again.";
+  };
+
+  recognition.onend = () => {
+    stopListening();
+  };
+}
+
+function speak(text) {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel(); // Cancel any existing speech
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.pitch = 0.9;
+    utterance.rate = 1.0;
+    window.speechSynthesis.speak(utterance);
+  }
+}
+
+// ==========================================
+// 10. PDF EXPORT UTILITY
+// ==========================================
+function initExport() {
+  const exportBtn = document.getElementById("exportBtn");
+  exportBtn.addEventListener("click", () => {
+    showToast("📥 Preparing PDF export report...", "info");
+    
+    const element = document.getElementById("app");
+    
+    // Temporarily hide elements not needed in PDF
+    const nav = document.getElementById("mainNav");
+    nav.style.display = "none";
+    
+    html2canvas(element, {
+      backgroundColor: state.theme === "dark" ? "#030308" : "#f0f2f7",
+      scale: 1.5,
+      logging: false
+    }).then(canvas => {
+      nav.style.display = "flex";
+      
+      const link = document.createElement("a");
+      link.download = `SolarMind-Forecast-Report-${new Date().toISOString().slice(0,10)}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      
+      showToast("✅ SolarMind report exported as image.", "info");
+    }).catch(err => {
+      nav.style.display = "flex";
+      showToast("❌ Export failed.", "error");
+    });
+  });
+}
+
+// ==========================================
+// 11. NOTIFICATION SYSTEM
+// ==========================================
+function showToast(message, type = "info") {
+  const container = document.getElementById("toastContainer");
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <span class="toast-content">${message}</span>
+    <button class="toast-close">&times;</button>
+  `;
+
+  container.appendChild(toast);
+
+  // Play subtle sound if audio allows
+  if (type === "warning" || type === "error") {
+    playBeepSound(150);
+  }
+
+  // Handle Close
+  toast.querySelector(".toast-close").addEventListener("click", () => {
+    toast.style.animation = "fade-out 0.3s forwards";
+    setTimeout(() => toast.remove(), 300);
+  });
+
+  // Auto remove
+  setTimeout(() => {
+    if (toast.parentNode) {
+      toast.style.animation = "fade-out 0.3s forwards";
+      setTimeout(() => toast.remove(), 300);
+    }
+  }, 6000);
+}
+
+// Retro computer audio beep using Web Audio API
+function playBeepSound(duration) {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.type = "sine";
+    oscillator.frequency.value = 650; // Cyber alert tone
+    gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime); // Low volume
+    
+    oscillator.start();
+    setTimeout(() => {
+      oscillator.stop();
+      audioCtx.close();
+    }, duration);
+  } catch (e) {
+    // Audio Context blocked by browser policy until interaction
+  }
+}

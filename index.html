@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SolarMind AI — Smart Solar Power Forecasting Platform</title>
+  <meta name="description" content="SolarMind AI is an advanced cyberpunk-themed solar power forecasting platform powered by AI, providing real-time energy predictions, weather analytics, and renewable energy insights.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Particle Canvas Background -->
+  <canvas id="particleCanvas"></canvas>
+
+  <!-- Scan Line Overlay -->
+  <div class="scanline-overlay"></div>
+
+  <!-- Grid Overlay -->
+  <div class="grid-overlay"></div>
+
+  <!-- ========== LOADING SCREEN ========== -->
+  <div id="loadingScreen" class="loading-screen">
+    <div class="loader-content">
+      <div class="loader-rings">
+        <div class="loader-ring ring-1"></div>
+        <div class="loader-ring ring-2"></div>
+        <div class="loader-ring ring-3"></div>
+        <div class="loader-core"></div>
+      </div>
+      <div class="loader-text">
+        <span class="loader-title">SOLARMIND AI</span>
+        <span class="loader-sub" id="loadingStatus">Initializing Neural Grid...</span>
+        <div class="loader-bar"><div class="loader-bar-fill" id="loadingBar"></div></div>
+        <span class="loader-percent" id="loadingPercent">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MAIN APP ========== -->
+  <div id="app" class="app hidden">
+
+    <!-- ===== TOP NAVIGATION ===== -->
+    <nav id="mainNav" class="top-nav">
+      <div class="nav-brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 40 40" class="sun-icon">
+            <defs>
+              <linearGradient id="sunGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ff6a00"/>
+                <stop offset="100%" stop-color="#ffbe00"/>
+              </linearGradient>
+              <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00f0ff"/>
+                <stop offset="100%" stop-color="#3b82f6"/>
+              </linearGradient>
+            </defs>
+            <circle cx="20" cy="20" r="8" fill="none" stroke="url(#sunGrad)" stroke-width="2"/>
+            <g class="sun-rays">
+              <line x1="20" y1="4" x2="20" y2="10" stroke="url(#sunGrad)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="20" y1="30" x2="20" y2="36" stroke="url(#sunGrad)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="4" y1="20" x2="10" y2="20" stroke="url(#sunGrad)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="30" y1="20" x2="36" y2="20" stroke="url(#sunGrad)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="8.7" y1="8.7" x2="12.9" y2="12.9" stroke="url(#sunGrad)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="27.1" y1="27.1" x2="31.3" y2="31.3" stroke="url(#sunGrad)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="8.7" y1="31.3" x2="12.9" y2="27.1" stroke="url(#sunGrad)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="27.1" y1="12.9" x2="31.3" y2="8.7" stroke="url(#sunGrad)" stroke-width="2" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </div>
+        <span class="brand-name">SOLAR<span class="brand-highlight">MIND</span></span>
+      </div>
+
+      <div class="nav-links">
+        <a href="#dashboard" class="nav-link active" data-section="dashboard">Dashboard</a>
+        <a href="#prediction" class="nav-link" data-section="prediction">Prediction</a>
+        <a href="#weather" class="nav-link" data-section="weather">Weather</a>
+        <a href="#trends" class="nav-link" data-section="trends">Trends</a>
+        <a href="#efficiency" class="nav-link" data-section="efficiency">Efficiency</a>
+        <a href="#insights" class="nav-link" data-section="insights">Insights</a>
+      </div>
+
+      <div class="nav-controls">
+        <button id="themeToggle" class="nav-btn" title="Toggle Theme">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+        </button>
+        <button id="notifBtn" class="nav-btn" title="Notifications">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
+          </svg>
+          <span class="notif-badge" id="notifBadge">3</span>
+        </button>
+        <button id="exportBtn" class="nav-btn" title="Export PDF">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+        </button>
+        <button id="voiceBtn" class="nav-btn voice-btn" title="Voice Assistant">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+            <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/>
+          </svg>
+        </button>
+        <button id="chatToggle" class="nav-btn chat-btn" title="AI Assistant">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+          </svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- ===== LIVE STATS BAR ===== -->
+    <section id="dashboard" class="section stats-section">
+      <div class="section-header">
+        <h1 class="section-title glitch" data-text="LIVE DASHBOARD">LIVE DASHBOARD</h1>
+        <p class="section-sub">Real-time solar energy monitoring • Neural grid active</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card" id="statPower">
+          <div class="stat-icon orange">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" data-target="847.3" data-suffix=" kW">0 kW</span>
+            <span class="stat-label">Power Output</span>
+          </div>
+          <span class="stat-trend up">+12.4%</span>
+        </div>
+        <div class="stat-card" id="statEfficiency">
+          <div class="stat-icon cyan">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" data-target="94.7" data-suffix="%">0%</span>
+            <span class="stat-label">Efficiency</span>
+          </div>
+          <span class="stat-trend up">+3.2%</span>
+        </div>
+        <div class="stat-card" id="statPanels">
+          <div class="stat-icon green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" data-target="1248" data-suffix="">0</span>
+            <span class="stat-label">Panels Online</span>
+          </div>
+          <span class="stat-trend neutral">99.8%</span>
+        </div>
+        <div class="stat-card" id="statCO2">
+          <div class="stat-icon purple">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" data-target="2.34" data-suffix=" tons">0 tons</span>
+            <span class="stat-label">CO₂ Saved Today</span>
+          </div>
+          <span class="stat-trend up">+8.1%</span>
+        </div>
+        <div class="stat-card" id="statRevenue">
+          <div class="stat-icon pink">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" data-target="1892" data-prefix="$" data-suffix="">0</span>
+            <span class="stat-label">Revenue Today</span>
+          </div>
+          <span class="stat-trend up">+15.7%</span>
+        </div>
+        <div class="stat-card" id="statTemp">
+          <div class="stat-icon blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" data-target="32.4" data-suffix="°C">0°C</span>
+            <span class="stat-label">Panel Temp</span>
+          </div>
+          <span class="stat-trend down">-1.2°</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ENERGY FORECAST ===== -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title glitch" data-text="ENERGY FORECAST">ENERGY FORECAST</h2>
+        <p class="section-sub">24-hour actual vs AI-predicted generation with confidence bands</p>
+      </div>
+      <div class="card card-full">
+        <div class="card-header">
+          <span class="card-title">⚡ Generation Forecast — Next 24 Hours</span>
+          <div class="card-actions">
+            <button class="chip active" data-range="24h">24H</button>
+            <button class="chip" data-range="7d">7D</button>
+            <button class="chip" data-range="30d">30D</button>
+          </div>
+        </div>
+        <div class="chart-container chart-lg">
+          <canvas id="forecastChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SOLAR PREDICTION ENGINE ===== -->
+    <section id="prediction" class="section">
+      <div class="section-header">
+        <h2 class="section-title glitch" data-text="PREDICTION ENGINE">PREDICTION ENGINE</h2>
+        <p class="section-sub">Random Forest model simulation • Adjust parameters to predict output</p>
+      </div>
+      <div class="prediction-grid">
+        <div class="card prediction-controls">
+          <div class="card-header">
+            <span class="card-title">🎛️ Model Parameters</span>
+          </div>
+          <div class="sliders-wrap">
+            <div class="slider-group">
+              <div class="slider-header">
+                <label>Solar Irradiance</label>
+                <span class="slider-val" id="irradianceVal">750 W/m²</span>
+              </div>
+              <input type="range" id="irradiance" min="0" max="1200" value="750" class="cyber-slider orange">
+            </div>
+            <div class="slider-group">
+              <div class="slider-header">
+                <label>Temperature</label>
+                <span class="slider-val" id="temperatureVal">28°C</span>
+              </div>
+              <input type="range" id="temperature" min="-10" max="50" value="28" class="cyber-slider cyan">
+            </div>
+            <div class="slider-group">
+              <div class="slider-header">
+                <label>Cloud Cover</label>
+                <span class="slider-val" id="cloudVal">15%</span>
+              </div>
+              <input type="range" id="cloud" min="0" max="100" value="15" class="cyber-slider purple">
+            </div>
+            <div class="slider-group">
+              <div class="slider-header">
+                <label>Humidity</label>
+                <span class="slider-val" id="humidityVal">45%</span>
+              </div>
+              <input type="range" id="humidity" min="0" max="100" value="45" class="cyber-slider green">
+            </div>
+            <div class="slider-group">
+              <div class="slider-header">
+                <label>Wind Speed</label>
+                <span class="slider-val" id="windVal">12 km/h</span>
+              </div>
+              <input type="range" id="wind" min="0" max="80" value="12" class="cyber-slider pink">
+            </div>
+          </div>
+          <button id="predictBtn" class="cyber-btn">
+            <span class="btn-text">⚡ RUN PREDICTION</span>
+            <span class="btn-glow"></span>
+          </button>
+        </div>
+        <div class="card prediction-output">
+          <div class="card-header">
+            <span class="card-title">📊 Prediction Result</span>
+          </div>
+          <div class="prediction-result">
+            <div class="result-main">
+              <div class="result-circle" id="predictionCircle">
+                <svg viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="54" class="result-ring-bg"/>
+                  <circle cx="60" cy="60" r="54" class="result-ring-fill" id="predictionRing"/>
+                </svg>
+                <div class="result-value">
+                  <span class="result-number" id="predictionValue">685</span>
+                  <span class="result-unit">kW</span>
+                </div>
+              </div>
+              <div class="result-label">Predicted Output</div>
+            </div>
+            <div class="result-details">
+              <div class="result-row">
+                <span>Confidence</span>
+                <span class="result-data cyan" id="predConfidence">92.4%</span>
+              </div>
+              <div class="result-row">
+                <span>Model Trees</span>
+                <span class="result-data green">150</span>
+              </div>
+              <div class="result-row">
+                <span>MSE</span>
+                <span class="result-data orange" id="predMSE">0.034</span>
+              </div>
+              <div class="result-row">
+                <span>R² Score</span>
+                <span class="result-data purple" id="predR2">0.967</span>
+              </div>
+              <div class="result-row">
+                <span>Peak Hour</span>
+                <span class="result-data pink" id="predPeak">13:00</span>
+              </div>
+              <div class="result-row">
+                <span>Daily Yield</span>
+                <span class="result-data blue" id="predYield">5,420 kWh</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== WEATHER ANALYTICS ===== -->
+    <section id="weather" class="section">
+      <div class="section-header">
+        <h2 class="section-title glitch" data-text="WEATHER ANALYTICS">WEATHER ANALYTICS</h2>
+        <p class="section-sub">Live weather feed • Temperature-irradiance correlation • Cloud impact analysis</p>
+      </div>
+      <div class="weather-grid">
+        <div class="card weather-current">
+          <div class="card-header">
+            <span class="card-title">🌤️ Current Weather</span>
+            <span class="live-dot"></span>
+          </div>
+          <div class="weather-now">
+            <div class="weather-icon-big" id="weatherIconBig">
+              <svg viewBox="0 0 80 80" class="weather-sun-svg">
+                <circle cx="40" cy="40" r="16" fill="url(#sunGrad)" opacity="0.9"/>
+                <g class="weather-sun-rays-anim">
+                  <line x1="40" y1="8" x2="40" y2="18" stroke="#ffbe00" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="40" y1="62" x2="40" y2="72" stroke="#ffbe00" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="8" y1="40" x2="18" y2="40" stroke="#ffbe00" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="62" y1="40" x2="72" y2="40" stroke="#ffbe00" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="17.4" y1="17.4" x2="24" y2="24" stroke="#ff6a00" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="56" y1="56" x2="62.6" y2="62.6" stroke="#ff6a00" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="17.4" y1="62.6" x2="24" y2="56" stroke="#ff6a00" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="56" y1="24" x2="62.6" y2="17.4" stroke="#ff6a00" stroke-width="3" stroke-linecap="round"/>
+                </g>
+              </svg>
+            </div>
+            <div class="weather-temp-big">
+              <span id="weatherTemp">34</span>°C
+            </div>
+            <div class="weather-desc" id="weatherDesc">Mostly Sunny</div>
+            <div class="weather-details-row">
+              <div class="weather-detail">
+                <span class="wd-icon">💧</span>
+                <span class="wd-val" id="wdHumidity">42%</span>
+                <span class="wd-label">Humidity</span>
+              </div>
+              <div class="weather-detail">
+                <span class="wd-icon">💨</span>
+                <span class="wd-val" id="wdWind">14 km/h</span>
+                <span class="wd-label">Wind</span>
+              </div>
+              <div class="weather-detail">
+                <span class="wd-icon">☀️</span>
+                <span class="wd-val" id="wdUV">8.2</span>
+                <span class="wd-label">UV Index</span>
+              </div>
+              <div class="weather-detail">
+                <span class="wd-icon">🌡️</span>
+                <span class="wd-val" id="wdPressure">1013 hPa</span>
+                <span class="wd-label">Pressure</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🌡️ Temp-Irradiance Correlation</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="tempIrradChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">☁️ Cloud Impact on Output</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="cloudImpactChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7-Day Forecast -->
+      <div class="forecast-strip">
+        <div class="forecast-day" id="fc0">
+          <span class="fc-day">MON</span>
+          <div class="fc-icon">☀️</div>
+          <span class="fc-temp">36° / 24°</span>
+          <div class="fc-bar"><div class="fc-bar-fill" style="width:90%"></div></div>
+          <span class="fc-gen">920 kWh</span>
+        </div>
+        <div class="forecast-day" id="fc1">
+          <span class="fc-day">TUE</span>
+          <div class="fc-icon">⛅</div>
+          <span class="fc-temp">33° / 22°</span>
+          <div class="fc-bar"><div class="fc-bar-fill" style="width:75%"></div></div>
+          <span class="fc-gen">780 kWh</span>
+        </div>
+        <div class="forecast-day" id="fc2">
+          <span class="fc-day">WED</span>
+          <div class="fc-icon">🌤️</div>
+          <span class="fc-temp">35° / 23°</span>
+          <div class="fc-bar"><div class="fc-bar-fill" style="width:85%"></div></div>
+          <span class="fc-gen">870 kWh</span>
+        </div>
+        <div class="forecast-day" id="fc3">
+          <span class="fc-day">THU</span>
+          <div class="fc-icon">🌦️</div>
+          <span class="fc-temp">29° / 21°</span>
+          <div class="fc-bar"><div class="fc-bar-fill" style="width:55%"></div></div>
+          <span class="fc-gen">560 kWh</span>
+        </div>
+        <div class="forecast-day" id="fc4">
+          <span class="fc-day">FRI</span>
+          <div class="fc-icon">☀️</div>
+          <span class="fc-temp">37° / 25°</span>
+          <div class="fc-bar"><div class="fc-bar-fill" style="width:95%"></div></div>
+          <span class="fc-gen">960 kWh</span>
+        </div>
+        <div class="forecast-day" id="fc5">
+          <span class="fc-day">SAT</span>
+          <div class="fc-icon">⛅</div>
+          <span class="fc-temp">32° / 23°</span>
+          <div class="fc-bar"><div class="fc-bar-fill" style="width:70%"></div></div>
+          <span class="fc-gen">720 kWh</span>
+        </div>
+        <div class="forecast-day" id="fc6">
+          <span class="fc-day">SUN</span>
+          <div class="fc-icon">☀️</div>
+          <span class="fc-temp">38° / 26°</span>
+          <div class="fc-bar"><div class="fc-bar-fill" style="width:92%"></div></div>
+          <span class="fc-gen">940 kWh</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== POWER GENERATION TRENDS ===== -->
+    <section id="trends" class="section">
+      <div class="section-header">
+        <h2 class="section-title glitch" data-text="GENERATION TRENDS">GENERATION TRENDS</h2>
+        <p class="section-sub">Monthly performance • Seasonal patterns • Peak analysis</p>
+      </div>
+      <div class="trends-grid">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📊 Monthly Generation</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="monthlyChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🔄 Seasonal Patterns</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="seasonalChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🎯 Peak vs Off-Peak</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="peakChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PANEL EFFICIENCY MONITOR ===== -->
+    <section id="efficiency" class="section">
+      <div class="section-header">
+        <h2 class="section-title glitch" data-text="EFFICIENCY MONITOR">EFFICIENCY MONITOR</h2>
+        <p class="section-sub">Individual panel health • Array performance • Real-time diagnostics</p>
+      </div>
+      <div class="panel-grid" id="panelGrid">
+        <!-- Panels generated by JS -->
+      </div>
+      <div class="efficiency-bottom">
+        <div class="card card-wide">
+          <div class="card-header">
+            <span class="card-title">📈 Array Efficiency Over Time</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="efficiencyChart"></canvas>
+          </div>
+        </div>
+        <div class="card gauges-card">
+          <div class="card-header">
+            <span class="card-title">⚡ System Gauges</span>
+          </div>
+          <div class="gauges-wrap">
+            <div class="gauge" id="gauge1">
+              <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="54" class="gauge-bg"/>
+                <circle cx="60" cy="60" r="54" class="gauge-fill orange-fill" data-percent="94"/>
+              </svg>
+              <div class="gauge-label">
+                <span class="gauge-val">94%</span>
+                <span class="gauge-name">Voltage</span>
+              </div>
+            </div>
+            <div class="gauge" id="gauge2">
+              <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="54" class="gauge-bg"/>
+                <circle cx="60" cy="60" r="54" class="gauge-fill cyan-fill" data-percent="87"/>
+              </svg>
+              <div class="gauge-label">
+                <span class="gauge-val">87%</span>
+                <span class="gauge-name">Current</span>
+              </div>
+            </div>
+            <div class="gauge" id="gauge3">
+              <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="54" class="gauge-bg"/>
+                <circle cx="60" cy="60" r="54" class="gauge-fill green-fill" data-percent="91"/>
+              </svg>
+              <div class="gauge-label">
+                <span class="gauge-val">91%</span>
+                <span class="gauge-name">Thermal</span>
+              </div>
+            </div>
+            <div class="gauge" id="gauge4">
+              <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="54" class="gauge-bg"/>
+                <circle cx="60" cy="60" r="54" class="gauge-fill purple-fill" data-percent="96"/>
+              </svg>
+              <div class="gauge-label">
+                <span class="gauge-val">96%</span>
+                <span class="gauge-name">Inverter</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== RENEWABLE ENERGY INSIGHTS ===== -->
+    <section id="insights" class="section">
+      <div class="section-header">
+        <h2 class="section-title glitch" data-text="GLOBAL INSIGHTS">GLOBAL INSIGHTS</h2>
+        <p class="section-sub">Worldwide solar adoption • Renewable mix • Growth projections</p>
+      </div>
+      <div class="insights-grid">
+        <div class="card globe-card">
+          <div class="card-header">
+            <span class="card-title">🌍 Global Solar Hotspots</span>
+          </div>
+          <div class="globe-container" id="globeContainer">
+            <div class="globe">
+              <div class="globe-sphere">
+                <div class="globe-grid-line gl-1"></div>
+                <div class="globe-grid-line gl-2"></div>
+                <div class="globe-grid-line gl-3"></div>
+                <div class="globe-grid-line gl-4"></div>
+                <div class="globe-grid-line gl-5"></div>
+                <div class="globe-equator"></div>
+              </div>
+              <div class="globe-hotspot hs-1" title="USA - 135 GW"></div>
+              <div class="globe-hotspot hs-2" title="China - 392 GW"></div>
+              <div class="globe-hotspot hs-3" title="India - 73 GW"></div>
+              <div class="globe-hotspot hs-4" title="Germany - 66 GW"></div>
+              <div class="globe-hotspot hs-5" title="Australia - 31 GW"></div>
+            </div>
+            <div class="globe-stats">
+              <div class="gs-item"><span class="gs-val">1,185 GW</span><span class="gs-label">Global Capacity</span></div>
+              <div class="gs-item"><span class="gs-val">192</span><span class="gs-label">Countries</span></div>
+              <div class="gs-item"><span class="gs-val">+26%</span><span class="gs-label">YoY Growth</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🔋 Renewable Energy Mix</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="renewableMixChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📈 Solar Growth Projections</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="growthChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <!-- Global Stats Row -->
+      <div class="global-stats-row">
+        <div class="global-stat">
+          <div class="gs-icon">☀️</div>
+          <div class="gs-number" data-target="1185">0</div>
+          <div class="gs-text">GW Solar Installed</div>
+        </div>
+        <div class="global-stat">
+          <div class="gs-icon">🌱</div>
+          <div class="gs-number" data-target="4200">0</div>
+          <div class="gs-text">Mt CO₂ Avoided</div>
+        </div>
+        <div class="global-stat">
+          <div class="gs-icon">👷</div>
+          <div class="gs-number" data-target="4700">0</div>
+          <div class="gs-text">K Jobs Created</div>
+        </div>
+        <div class="global-stat">
+          <div class="gs-icon">💰</div>
+          <div class="gs-number" data-target="382">0</div>
+          <div class="gs-text">B$ Investment</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="site-footer">
+      <div class="footer-content">
+        <span class="footer-brand">SOLAR<span class="brand-highlight">MIND</span> AI</span>
+        <span class="footer-copy">© 2026 SolarMind AI — Cyberpunk Energy Intelligence Platform</span>
+        <span class="footer-version">v2.0.0 • Neural Grid Active</span>
+      </div>
+    </footer>
+
+  </div><!-- /app -->
+
+  <!-- ===== AI CHAT PANEL ===== -->
+  <div id="chatPanel" class="chat-panel">
+    <div class="chat-header">
+      <div class="chat-header-info">
+        <div class="chat-avatar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 010 2h-1.27a7 7 0 01-13.46 0H5a1 1 0 010-2h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z"/><circle cx="9" cy="13" r="1"/><circle cx="15" cy="13" r="1"/><path d="M10 17a2 2 0 004 0"/></svg>
+        </div>
+        <div>
+          <span class="chat-name">SolarMind AI</span>
+          <span class="chat-status">● Online</span>
+        </div>
+      </div>
+      <button id="chatClose" class="chat-close">&times;</button>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-msg bot">
+        <div class="msg-bubble">Hello! I'm your SolarMind AI assistant. Ask me about solar forecasts, energy optimization, weather impacts, or savings analysis. ⚡</div>
+      </div>
+    </div>
+    <div class="chat-input-wrap">
+      <input type="text" id="chatInput" class="chat-input" placeholder="Ask about solar energy..." autocomplete="off">
+      <button id="chatSend" class="chat-send-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== VOICE ASSISTANT MODAL ===== -->
+  <div id="voiceModal" class="voice-modal">
+    <div class="voice-modal-content">
+      <button id="voiceClose" class="voice-close">&times;</button>
+      <div class="voice-visual">
+        <div class="voice-rings">
+          <div class="v-ring v-ring-1"></div>
+          <div class="v-ring v-ring-2"></div>
+          <div class="v-ring v-ring-3"></div>
+        </div>
+        <button id="voiceMicBtn" class="voice-mic-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+            <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+          </svg>
+        </button>
+      </div>
+      <div class="voice-status" id="voiceStatus">Tap to speak</div>
+      <div class="voice-transcript" id="voiceTranscript"></div>
+      <div class="voice-response" id="voiceResponse"></div>
+      <div class="voice-wave" id="voiceWave">
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== NOTIFICATION TOAST CONTAINER ===== -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

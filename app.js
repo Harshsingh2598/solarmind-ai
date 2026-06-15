@@ -931,30 +931,7 @@ async function generateAIResponse(q) {
   
   // Hindi Query Handling
   if (isHindi) {
-    if (lowercaseQ.includes("मौसम") || lowercaseQ.includes("तापमान") || lowercaseQ.includes("ताप")) {
-      let cleaned = lowercaseQ;
-      const hindiToRemove = [
-        "का मौसम बताएं", "का मौसम", "का तापमान बताएं", "का तापमान", "मौसम बताएं", "तापमान बताएं", 
-        "मौसम", "तापमान", "ताप", "कैसा है", "क्या है", "बताएं", "कृपया", "दिखाएं"
-      ];
-      hindiToRemove.forEach(kw => {
-        cleaned = cleaned.replaceAll(kw, "");
-      });
-      
-      const connectors = ["का", "की", "के", "में", "से", "पर", "को", "है"];
-      connectors.forEach(word => {
-        const regex = new RegExp(`\\b${word}\\b`, 'g');
-        cleaned = cleaned.replace(regex, "");
-      });
-      
-      cleaned = cleaned.replace(/[?.!,]/g, "");
-      const locationInput = cleaned.replace(/\s+/g, " ").trim();
-      
-      if (locationInput.length >= 2) {
-        return await fetchRealTimeWeather(locationInput);
-      }
-    }
-    
+    // 1. Check standard intents first
     if (lowercaseQ.includes("पूर्वानुमान") || lowercaseQ.includes("उत्पादन") || lowercaseQ.includes("बिजली")) {
       return "हमारा न्यूरल फोरकास्ट आज दोपहर 13:00 बजे लगभग 850 kW के पीक जेनरेशन की भविष्यवाणी करता है। सौर ग्रिड पूरी तरह से एक्टिव है।";
     }
@@ -964,6 +941,35 @@ async function generateAIResponse(q) {
     if (lowercaseQ.includes("बचत") || lowercaseQ.includes("कमाई") || lowercaseQ.includes("राजस्व")) {
       return "आपने आज 2.34 टन कार्बन डाइऑक्साइड बचाया है। यह स्मार्ट ग्रिड के माध्यम से लगभग $1,892 का नेट राजस्व देता है।";
     }
+    
+    // 2. Default to Weather/Location Lookup (Devanagari-safe parsing)
+    let cleaned = lowercaseQ;
+    const hindiToRemove = [
+      "का मौसम बताएं", "का मौसम", "का तापमान बताएं", "का तापमान", "मौसम बताएं", "तापमान बताएं", 
+      "मौसम", "तापमान", "ताप", "कैसा है", "क्या है", "बताएं", "कृपया", "दिखाएं", "बताओ", "बताइए", "दिखाओ",
+      "दो", "बारे", "जानकारी"
+    ];
+    hindiToRemove.forEach(kw => {
+      cleaned = cleaned.replaceAll(kw, "");
+    });
+    
+    // Devanagari-safe word boundary replacements (without \b)
+    const connectors = ["का", "की", "के", "में", "से", "पर", "को", "है", "बारे", "बता", "दिखा", "हो"];
+    connectors.forEach(word => {
+      const regex = new RegExp(`(?:^|\\s)${word}(?:\\s|$)`, 'g');
+      cleaned = cleaned.replace(regex, " ");
+    });
+    
+    // Remove punctuation
+    cleaned = cleaned.replace(/[?.!,]/g, "");
+    
+    // Clean spaces and trim
+    const locationInput = cleaned.replace(/\s+/g, " ").trim();
+    
+    if (locationInput.length >= 2) {
+      return await fetchRealTimeWeather(locationInput);
+    }
+    
     return "क्वेरी पूरी हो गई है। ग्रिड के सभी आंकड़े सामान्य हैं। बताएं यदि आपको किसी विशेष पैनल या मौसम की जानकारी चाहिए।";
   }
   

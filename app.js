@@ -778,20 +778,44 @@ function initAISentinel() {
 
 async function fetchRealTimeWeather(locationName) {
   try {
-    // 1. Fetch Geocoding coordinates from Open-Meteo
-    const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=en&format=json`;
-    const geoResponse = await fetch(geocodeUrl);
-    const geoData = await geoResponse.json();
+    let latitude, longitude, locationFullName;
     
-    if (!geoData.results || geoData.results.length === 0) {
+    // 1. Try Nominatim Geocoding API first (great for states, countries, regions)
+    try {
+      const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationName)}&format=json&limit=1`;
+      const nomResponse = await fetch(nominatimUrl);
+      const nomData = await nomResponse.json();
+      
+      if (nomData && nomData.length > 0) {
+        latitude = parseFloat(nomData[0].lat);
+        longitude = parseFloat(nomData[0].lon);
+        locationFullName = nomData[0].display_name;
+      }
+    } catch (nomErr) {
+      console.warn("Nominatim geocoding failed, falling back to Open-Meteo:", nomErr);
+    }
+    
+    // 2. Fallback to Open-Meteo Geocoding if Nominatim failed or returned nothing
+    if (latitude === undefined || longitude === undefined) {
+      const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=en&format=json`;
+      const geoResponse = await fetch(geocodeUrl);
+      const geoData = await geoResponse.json();
+      
+      if (geoData.results && geoData.results.length > 0) {
+        const location = geoData.results[0];
+        latitude = location.latitude;
+        longitude = location.longitude;
+        const { name, country, admin1 } = location;
+        locationFullName = admin1 ? `${name}, ${admin1}, ${country}` : `${name}, ${country}`;
+      }
+    }
+    
+    // 3. Check if we found coordinates
+    if (latitude === undefined || longitude === undefined) {
       return `I could not locate "${locationName}" on the weather grid. Please verify the state or country spelling.`;
     }
     
-    const location = geoData.results[0];
-    const { latitude, longitude, name, country, admin1 } = location;
-    const locationFullName = admin1 ? `${name}, ${admin1}, ${country}` : `${name}, ${country}`;
-    
-    // 2. Fetch current weather from coordinates
+    // 4. Fetch current weather from coordinates using Open-Meteo
     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`;
     const weatherResponse = await fetch(weatherUrl);
     const weatherData = await weatherResponse.json();
@@ -820,6 +844,14 @@ async function fetchRealTimeWeather(locationName) {
     };
     
     const condition = weatherConditions[code] || "variable atmospheric conditions";
+    
+    // Shorten display name if it's too long
+    if (locationFullName.length > 50) {
+      const parts = locationFullName.split(", ");
+      if (parts.length > 3) {
+        locationFullName = parts.slice(0, 3).join(", ");
+      }
+    }
     
     return `Weather telemetry for ${locationFullName}: Currently ${temp}°C with ${humidity}% humidity, wind speed at ${windSpeed} km/h, experiencing ${condition}.`;
   } catch (error) {

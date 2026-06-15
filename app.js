@@ -967,24 +967,33 @@ async function generateAIResponse(q) {
     return "क्वेरी पूरी हो गई है। ग्रिड के सभी आंकड़े सामान्य हैं। बताएं यदि आपको किसी विशेष पैनल या मौसम की जानकारी चाहिए।";
   }
   
-  // English Query Handling (Default)
-  if (lowercaseQ.includes("weather") || lowercaseQ.includes("temp") || lowercaseQ.includes("temperature")) {
+  // English & Hinglish Query Handling (Default fallback)
+  if (
+    lowercaseQ.includes("weather") || 
+    lowercaseQ.includes("temp") || 
+    lowercaseQ.includes("temperature") || 
+    lowercaseQ.includes("vedar") || 
+    lowercaseQ.includes("mausam")
+  ) {
     let cleaned = lowercaseQ;
     
-    // Remove command-style prefixes
+    // Remove English and Hinglish command prefixes
     const keywordsToRemove = [
       "can you tell me the", "can you tell me", "what is the", "give me the", 
       "show me the", "tell me the", "how is the", "show me", "tell me", "give me",
-      "weather", "temperature", "temp", "forecast", "report", "conditions"
+      "kya mujhe aap", "kya aap mujhe", "bata sakte ho", "bata sakte hai", "bata sakte hain", 
+      "bata sakte ha", "bata sakte", "weather", "temperature", "temp", "vedar", "mausam",
+      "forecast", "report", "conditions"
     ];
     keywordsToRemove.forEach(kw => {
       cleaned = cleaned.replaceAll(kw, "");
     });
     
-    // Remove standalone connector and helper words (keeping 'and' for names like Jammu and Kashmir)
+    // Remove standalone connector and helper words in English and Hinglish
     const connectors = [
       "in", "of", "for", "at", "is", "current", "today", "now", "the", 
-      "a", "an", "about", "please", "state", "country", "region", "province"
+      "a", "an", "about", "please", "state", "country", "region", "province",
+      "ka", "ki", "ke", "ko", "se", "me", "mein", "par", "ho", "ha", "hai", "hain", "kya", "aap", "mujhe", "bata"
     ];
     connectors.forEach(word => {
       const regex = new RegExp(`\\b${word}\\b`, 'g');

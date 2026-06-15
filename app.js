@@ -776,13 +776,52 @@ function initAISentinel() {
   });
 }
 
+const STATE_MAPPINGS = {
+  "jammu and kashmir": "Srinagar",
+  "jammu kashmir": "Srinagar",
+  "maharashtra": "Mumbai",
+  "california": "Sacramento",
+  "texas": "Austin",
+  "new york": "Albany",
+  "florida": "Tallahassee",
+  "punjab": "Chandigarh",
+  "haryana": "Chandigarh",
+  "delhi": "New Delhi",
+  "goa": "Panaji",
+  "karnataka": "Bengaluru",
+  "tamil nadu": "Chennai",
+  "uttar pradesh": "Lucknow",
+  "bihar": "Patna",
+  "west bengal": "Kolkata",
+  "rajasthan": "Jaipur",
+  "gujarat": "Gandhinagar",
+  "madhya pradesh": "Bhopal",
+  "kerala": "Thiruvananthapuram",
+  "telangana": "Hyderabad",
+  "andhra pradesh": "Amaravati",
+  "assam": "Dispur",
+  "himachal pradesh": "Shimla",
+  "uttarakhand": "Dehradun",
+  "odisha": "Bhubaneswar",
+  "chhattisgarh": "Raipur",
+  "jharkhand": "Ranchi"
+};
+
 async function fetchRealTimeWeather(locationName) {
   try {
+    let searchName = locationName.toLowerCase().trim();
+    
+    // Check if the search matches a state mapping to route to its capital
+    if (STATE_MAPPINGS[searchName]) {
+      console.log(`Mapping state ${locationName} to capital ${STATE_MAPPINGS[searchName]}`);
+      searchName = STATE_MAPPINGS[searchName];
+    }
+    
     let latitude, longitude, locationFullName;
     
-    // 1. Try Nominatim Geocoding API first (great for states, countries, regions)
+    // 1. Try Nominatim Geocoding API first (authenticated with user email to prevent 403 blocks)
     try {
-      const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationName)}&format=json&limit=1`;
+      const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchName)}&format=json&limit=1&email=harshsingh359800@gmail.com`;
       const nomResponse = await fetch(nominatimUrl);
       const nomData = await nomResponse.json();
       
@@ -792,12 +831,12 @@ async function fetchRealTimeWeather(locationName) {
         locationFullName = nomData[0].display_name;
       }
     } catch (nomErr) {
-      console.warn("Nominatim geocoding failed, falling back to Open-Meteo:", nomErr);
+      console.warn("Nominatim geocoding failed, trying Open-Meteo:", nomErr);
     }
     
-    // 2. Fallback to Open-Meteo Geocoding if Nominatim failed or returned nothing
+    // 2. Fallback to Open-Meteo Geocoding
     if (latitude === undefined || longitude === undefined) {
-      const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=en&format=json`;
+      const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(searchName)}&count=1&language=en&format=json`;
       const geoResponse = await fetch(geocodeUrl);
       const geoData = await geoResponse.json();
       
@@ -810,7 +849,7 @@ async function fetchRealTimeWeather(locationName) {
       }
     }
     
-    // 3. Check if we found coordinates
+    // 3. Check coordinates
     if (latitude === undefined || longitude === undefined) {
       return `I could not locate "${locationName}" on the weather grid. Please verify the state or country spelling.`;
     }
@@ -845,15 +884,18 @@ async function fetchRealTimeWeather(locationName) {
     
     const condition = weatherConditions[code] || "variable atmospheric conditions";
     
-    // Shorten display name if it's too long
-    if (locationFullName.length > 50) {
-      const parts = locationFullName.split(", ");
+    // Format the display name nicely
+    let displayName = locationFullName;
+    if (STATE_MAPPINGS[locationName.toLowerCase().trim()]) {
+      displayName = `${locationName} (${searchName})`;
+    } else if (displayName.length > 50) {
+      const parts = displayName.split(", ");
       if (parts.length > 3) {
-        locationFullName = parts.slice(0, 3).join(", ");
+        displayName = parts.slice(0, 3).join(", ");
       }
     }
     
-    return `Weather telemetry for ${locationFullName}: Currently ${temp}°C with ${humidity}% humidity, wind speed at ${windSpeed} km/h, experiencing ${condition}.`;
+    return `Weather telemetry for ${displayName}: Currently ${temp}°C with ${humidity}% humidity, wind speed at ${windSpeed} km/h, experiencing ${condition}.`;
   } catch (error) {
     console.error(error);
     return `Satellite grid connectivity error. Unable to get real-time parameters for ${locationName}.`;
@@ -877,9 +919,9 @@ async function generateAIResponse(q) {
       cleaned = cleaned.replaceAll(kw, "");
     });
     
-    // Remove standalone connector and helper words
+    // Remove standalone connector and helper words (keeping 'and' for names like Jammu and Kashmir)
     const connectors = [
-      "and", "in", "of", "for", "at", "is", "current", "today", "now", "the", 
+      "in", "of", "for", "at", "is", "current", "today", "now", "the", 
       "a", "an", "about", "please", "state", "country", "region", "province"
     ];
     connectors.forEach(word => {

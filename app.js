@@ -833,26 +833,36 @@ async function generateAIResponse(q) {
   
   // Check if query is looking for real-time weather details
   if (lowercaseQ.includes("weather") || lowercaseQ.includes("temp") || lowercaseQ.includes("temperature")) {
-    let locationInput = "";
+    let cleaned = lowercaseQ;
     
-    // Check pattern: "weather in/of/for [place]"
-    let match = q.match(/(?:weather|temperature|temp)(?:\s+(?:in|of|for|at))?\s+([a-zA-Z\s,]{2,})/i);
-    if (match && match[1]) {
-      locationInput = match[1].trim();
-    } else {
-      // Check pattern: "[place] weather/temperature/temp"
-      match = q.match(/([a-zA-Z\s,]{2,})\s+(?:weather|temperature|temp)/i);
-      if (match && match[1]) {
-        locationInput = match[1].trim();
-      }
-    }
+    // Remove command-style prefixes
+    const keywordsToRemove = [
+      "can you tell me the", "can you tell me", "what is the", "give me the", 
+      "show me the", "tell me the", "how is the", "show me", "tell me", "give me",
+      "weather", "temperature", "temp", "forecast", "report", "conditions"
+    ];
+    keywordsToRemove.forEach(kw => {
+      cleaned = cleaned.replaceAll(kw, "");
+    });
     
-    const stopWords = ["today", "tomorrow", "forecast", "now", "here", "the", "a", "an", "is", "what", "how", "give", "me", "show", "tell", "current"];
-    const words = locationInput.split(/\s+/).filter(w => !stopWords.includes(w.toLowerCase()));
+    // Remove standalone connector and helper words
+    const connectors = [
+      "and", "in", "of", "for", "at", "is", "current", "today", "now", "the", 
+      "a", "an", "about", "please", "state", "country", "region", "province"
+    ];
+    connectors.forEach(word => {
+      const regex = new RegExp(`\\b${word}\\b`, 'g');
+      cleaned = cleaned.replace(regex, "");
+    });
     
-    if (words.length > 0) {
-      const refinedLocation = words.join(" ");
-      return await fetchRealTimeWeather(refinedLocation);
+    // Remove punctuation
+    cleaned = cleaned.replace(/[?.!,]/g, "");
+    
+    // Clean spaces and trim
+    const locationInput = cleaned.replace(/\s+/g, " ").trim();
+    
+    if (locationInput.length >= 2) {
+      return await fetchRealTimeWeather(locationInput);
     }
   }
   

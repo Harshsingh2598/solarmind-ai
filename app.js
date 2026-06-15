@@ -868,7 +868,7 @@ async function fetchRealTimeWeather(locationName) {
     const windSpeed = weatherData.current.wind_speed_10m;
     const code = weatherData.current.weather_code;
     
-    // Simple code to text mapping
+    // Simple code to text mapping in English
     const weatherConditions = {
       0: "Clear sky",
       1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
@@ -881,8 +881,20 @@ async function fetchRealTimeWeather(locationName) {
       85: "Slight snow showers", 86: "Heavy snow showers",
       95: "Thunderstorm", 96: "Thunderstorm with slight hail", 99: "Thunderstorm with heavy hail"
     };
-    
-    const condition = weatherConditions[code] || "variable atmospheric conditions";
+
+    // Hindi weather condition mapping
+    const weatherConditionsHindi = {
+      0: "साफ आसमान",
+      1: "मुख्य रूप से साफ", 2: "आंशिक रूप से बादल", 3: "घने बादल",
+      45: "कोहरा", 48: "बर्फीला कोहरा",
+      51: "हल्की बूंदाबांदी", 53: "मध्यम बूंदाबांदी", 55: "घनी बूंदाबांदी",
+      61: "हल्की बारिश", 63: "मध्यम बारिश", 65: "भारी बारिश",
+      71: "हल्की बर्फबारी", 73: "मध्यम बर्फबारी", 75: "भारी बर्फबारी",
+      77: "ओले",
+      80: "हल्की बौछारें", 81: "मध्यम बौछारें", 82: "तेज बौछारें",
+      85: "हल्की बर्फ की बौछारें", 86: "भारी बर्फ की बौछारें",
+      95: "गरज के साथ आंधी", 96: "ओलों के साथ आंधी", 99: "भारी ओलों के साथ तूफान"
+    };
     
     // Format the display name nicely
     let displayName = locationFullName;
@@ -894,18 +906,68 @@ async function fetchRealTimeWeather(locationName) {
         displayName = parts.slice(0, 3).join(", ");
       }
     }
+
+    const isHindi = state.voiceLang === "hi-IN";
     
-    return `Weather telemetry for ${displayName}: Currently ${temp}°C with ${humidity}% humidity, wind speed at ${windSpeed} km/h, experiencing ${condition}.`;
+    if (isHindi) {
+      const conditionHindi = weatherConditionsHindi[code] || "बदलते मौसम की स्थिति";
+      return `${displayName} के लिए मौसम की जानकारी: वर्तमान में तापमान ${temp}°C है, हवा में नमी ${humidity}% है, हवा की गति ${windSpeed} किमी प्रति घंटा है, और मौसम: ${conditionHindi} है।`;
+    } else {
+      const condition = weatherConditions[code] || "variable atmospheric conditions";
+      return `Weather telemetry for ${displayName}: Currently ${temp}°C with ${humidity}% humidity, wind speed at ${windSpeed} km/h, experiencing ${condition}.`;
+    }
   } catch (error) {
     console.error(error);
-    return `Satellite grid connectivity error. Unable to get real-time parameters for ${locationName}.`;
+    const isHindi = state.voiceLang === "hi-IN";
+    return isHindi 
+      ? `सैटेलाइट ग्रिड कनेक्टिविटी में समस्या है। ${locationName} का मौसम नहीं मिल सका।`
+      : `Satellite grid connectivity error. Unable to get real-time parameters for ${locationName}.`;
   }
 }
 
 async function generateAIResponse(q) {
   const lowercaseQ = q.toLowerCase();
+  const isHindi = state.voiceLang === "hi-IN";
   
-  // Check if query is looking for real-time weather details
+  // Hindi Query Handling
+  if (isHindi) {
+    if (lowercaseQ.includes("मौसम") || lowercaseQ.includes("तापमान") || lowercaseQ.includes("ताप")) {
+      let cleaned = lowercaseQ;
+      const hindiToRemove = [
+        "का मौसम बताएं", "का मौसम", "का तापमान बताएं", "का तापमान", "मौसम बताएं", "तापमान बताएं", 
+        "मौसम", "तापमान", "ताप", "कैसा है", "क्या है", "बताएं", "कृपया", "दिखाएं"
+      ];
+      hindiToRemove.forEach(kw => {
+        cleaned = cleaned.replaceAll(kw, "");
+      });
+      
+      const connectors = ["का", "की", "के", "में", "से", "पर", "को", "है"];
+      connectors.forEach(word => {
+        const regex = new RegExp(`\\b${word}\\b`, 'g');
+        cleaned = cleaned.replace(regex, "");
+      });
+      
+      cleaned = cleaned.replace(/[?.!,]/g, "");
+      const locationInput = cleaned.replace(/\s+/g, " ").trim();
+      
+      if (locationInput.length >= 2) {
+        return await fetchRealTimeWeather(locationInput);
+      }
+    }
+    
+    if (lowercaseQ.includes("पूर्वानुमान") || lowercaseQ.includes("उत्पादन") || lowercaseQ.includes("बिजली")) {
+      return "हमारा न्यूरल फोरकास्ट आज दोपहर 13:00 बजे लगभग 850 kW के पीक जेनरेशन की भविष्यवाणी करता है। सौर ग्रिड पूरी तरह से एक्टिव है।";
+    }
+    if (lowercaseQ.includes("पैनल") || lowercaseQ.includes("एफिशिएंसी") || lowercaseQ.includes("स्वास्थ्य")) {
+      return "सिस्टम में 12 सब-एरे हैं। सब-एरे PV-007 में 38.2°C का तापमान है, जिससे इसकी स्थानीय एफिशिएंसी घटकर 68% हो गई है।";
+    }
+    if (lowercaseQ.includes("बचत") || lowercaseQ.includes("कमाई") || lowercaseQ.includes("राजस्व")) {
+      return "आपने आज 2.34 टन कार्बन डाइऑक्साइड बचाया है। यह स्मार्ट ग्रिड के माध्यम से लगभग $1,892 का नेट राजस्व देता है।";
+    }
+    return "क्वेरी पूरी हो गई है। ग्रिड के सभी आंकड़े सामान्य हैं। बताएं यदि आपको किसी विशेष पैनल या मौसम की जानकारी चाहिए।";
+  }
+  
+  // English Query Handling (Default)
   if (lowercaseQ.includes("weather") || lowercaseQ.includes("temp") || lowercaseQ.includes("temperature")) {
     let cleaned = lowercaseQ;
     
@@ -964,6 +1026,26 @@ function initVoiceInterface() {
   const voiceTranscript = document.getElementById("voiceTranscript");
   const voiceResponse = document.getElementById("voiceResponse");
 
+  // Setup Language toggle
+  const langEn = document.getElementById("langEn");
+  const langHi = document.getElementById("langHi");
+
+  state.voiceLang = "en-US"; // Default language
+
+  langEn.addEventListener("click", () => {
+    state.voiceLang = "en-US";
+    langEn.classList.add("active");
+    langHi.classList.remove("active");
+    voiceStatus.textContent = "Language set to English";
+  });
+
+  langHi.addEventListener("click", () => {
+    state.voiceLang = "hi-IN";
+    langHi.classList.add("active");
+    langEn.classList.remove("active");
+    voiceStatus.textContent = "भाषा हिन्दी चुनी गई";
+  });
+
   voiceBtn.addEventListener("click", () => {
     voiceModal.classList.add("open");
   });
@@ -983,7 +1065,6 @@ function initVoiceInterface() {
 
   const recognition = new SpeechRecognition();
   recognition.continuous = false;
-  recognition.lang = "en-US";
   recognition.interimResults = false;
 
   let listening = false;
@@ -992,7 +1073,7 @@ function initVoiceInterface() {
     recognition.stop();
     voiceModal.classList.remove("listening");
     listening = false;
-    voiceStatus.textContent = "Tap to speak";
+    voiceStatus.textContent = state.voiceLang === "hi-IN" ? "बोलने के लिए टैप करें" : "Tap to speak";
   }
 
   voiceMicBtn.addEventListener("click", () => {
@@ -1002,7 +1083,8 @@ function initVoiceInterface() {
       voiceTranscript.textContent = "";
       voiceResponse.textContent = "";
       voiceModal.classList.add("listening");
-      voiceStatus.textContent = "Listening...";
+      voiceStatus.textContent = state.voiceLang === "hi-IN" ? "सुन रहा हूँ..." : "Listening...";
+      recognition.lang = state.voiceLang;
       recognition.start();
       listening = true;
     }
@@ -1011,7 +1093,7 @@ function initVoiceInterface() {
   recognition.onresult = async (event) => {
     const text = event.results[0][0].transcript;
     voiceTranscript.textContent = `"${text}"`;
-    voiceResponse.textContent = "Processing voice telemetry...";
+    voiceResponse.textContent = state.voiceLang === "hi-IN" ? "प्रोसेसिंग वॉयस टेलीमेट्री..." : "Processing voice telemetry...";
     
     // Process response
     try {
@@ -1019,7 +1101,7 @@ function initVoiceInterface() {
       voiceResponse.textContent = botResponse;
       speak(botResponse);
     } catch (err) {
-      voiceResponse.textContent = "Could not parse voice payload.";
+      voiceResponse.textContent = state.voiceLang === "hi-IN" ? "वॉयस डेटा पार्स नहीं हो सका।" : "Could not parse voice payload.";
     }
 
     stopListening();
@@ -1027,7 +1109,7 @@ function initVoiceInterface() {
 
   recognition.onerror = () => {
     stopListening();
-    voiceStatus.textContent = "Error occurred. Try again.";
+    voiceStatus.textContent = state.voiceLang === "hi-IN" ? "त्रुटि हुई। फिर से प्रयास करें।" : "Error occurred. Try again.";
   };
 
   recognition.onend = () => {
@@ -1041,6 +1123,17 @@ function speak(text) {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.pitch = 0.9;
     utterance.rate = 1.0;
+    utterance.lang = state.voiceLang; // Match voice output language
+    
+    // Attempt to select a native Hindi voice if Hindi is chosen
+    if (state.voiceLang === "hi-IN") {
+      const voices = window.speechSynthesis.getVoices();
+      const hindiVoice = voices.find(v => v.lang.startsWith("hi"));
+      if (hindiVoice) {
+        utterance.voice = hindiVoice;
+      }
+    }
+    
     window.speechSynthesis.speak(utterance);
   }
 }
